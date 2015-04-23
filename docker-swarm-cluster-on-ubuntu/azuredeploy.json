@@ -12,10 +12,6 @@
     "adminPassword": {
       "type": "securestring"
     },
-    "vmSourceImageName": {
-      "type": "string",
-      "defaultValue": "b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-14_04_2_LTS-amd64-server-20150309-en-us-30GB"
-    },
     "location": {
       "type": "String",
       "defaultValue": "West US"
@@ -38,9 +34,10 @@
     }
   },
   "variables": {
-    "sourceImageName": "[concat('/', subscription().subscriptionId, '/services/images/',parameters('vmSourceImageName'))]",
+    "sourceImageName": "[concat('/', subscription().subscriptionId, '/services/images/2b171e93f07c4903bcad35bda10acf22__CoreOS-Stable-633.1.0')]",
     "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',parameters('virtualNetworkName'))]",
     "subnetRef": "[concat(variables('vnetID'),'/subnets/clusterSubnet')]",
+    "cloudConfig": "[base64('#cloud-config\n\ncoreos:\n  etcd2:\n    listen-client-urls: http://0.0.0.0:4001\n')]",
     "clusterSize": 3
   },
   "resources": [
@@ -137,7 +134,8 @@
         "osProfile": {
           "computername": "[concat(parameters('nodeBaseName'), copyIndex())]",
           "adminUsername": "[parameters('adminUsername')]",
-          "adminPassword": "[parameters('adminPassword')]"
+          "adminPassword": "[parameters('adminPassword')]",
+          "customData": "[variables('cloudConfig')]"
         },
         "storageProfile": {
           "sourceImage": {
