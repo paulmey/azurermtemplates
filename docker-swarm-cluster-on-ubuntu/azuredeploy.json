@@ -31,13 +31,16 @@
     "nicName": {
       "type": "string",
       "defaultValue": "nodeNic"
+    },
+    "installScriptUri": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/azurermtemplates/azurermtemplates/master/docker-swarm-cluster/install.sh"
     }
   },
   "variables": {
     "sourceImageName": "[concat('/', subscription().subscriptionId, '/services/images/2b171e93f07c4903bcad35bda10acf22__CoreOS-Stable-633.1.0')]",
-    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',parameters('virtualNetworkName'))]",
-    "subnetRef": "[concat(variables('vnetID'),'/subnets/clusterSubnet')]",
-    "cloudConfig": "[base64('#cloud-config\n\ncoreos:\n  etcd2:\n    listen-client-urls: http://0.0.0.0:4001\n')]",
+    "subnetRef": "[concat(resourceId('Microsoft.Network/virtualNetworks',parameters('virtualNetworkName')),'/subnets/clusterSubnet')]",
+    "cloudConfig": "[base64('#cloud-config\n\ncoreos:\n  etcd2:\n    listen-client-urls: http://0.0.0.0:4001\n  units:\n    - name: etcd.service\n      command: start\n')]",
     "clusterSize": 3
   },
   "resources": [
@@ -149,6 +152,30 @@
               "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(parameters('nicName'), copyIndex()))]"
             }
           ]
+        }
+      }
+    },
+    {
+      "copy": {
+        "name": "script",
+        "count": "[variables('clusterSize')]"
+      },
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('nodeBaseName'), copyIndex(), '/installScript')]",
+      "apiVersion": "2014-12-01-preview",
+      "location": "West US",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', parameters('nodeBaseName'), copyIndex())]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+            "[parameters('installScriptUri')]"
+          ],
+          "commandToExecute": "[concat('sh install.sh ', copyIndex(), ' ', reference(concat(parameters('nicName'), '0')).ipConfigurations[0].properties.privateIPAddress)]"
         }
       }
     }
